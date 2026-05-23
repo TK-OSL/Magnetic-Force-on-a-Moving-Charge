@@ -1,0 +1,961 @@
+<!--
+================================================================================
+Project: Magnetic Force on a Moving Charge - Interactive Web Simulation
+Developer: OpenSimLab.org
+Coder: AI Assistant
+Description: 
+    This interactive 3D web application demonstrates the Lorentz force acting 
+    on a charged particle moving through a uniform magnetic field.
+    Includes Bilingual support (EN/TH), realistic elementary charge calculation,
+    and history of discovery.
+================================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Force Simulation | OpenSimLab</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            background-color: #0f172a; 
+            color: #f8fafc; 
+            font-family: 'Inter', 'Sarabun', sans-serif; 
+            overflow-x: hidden;
+        }
+        
+        /* Language Toggle Logic */
+        body.lang-th .en { display: none !important; }
+        body.lang-en .th { display: none !important; }
+
+        #sim-container { 
+            width: 100%; 
+            height: 100%; 
+            min-height: 500px;
+            position: relative;
+        }
+        .theory-box {
+            background: rgba(30, 41, 59, 0.5);
+            border-left: 4px solid #3b82f6;
+            padding: 1.5rem;
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+        .math-block {
+            background: #1e293b;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            color: #e2e8f0;
+        }
+        .val-input {
+            background: #334155;
+            color: #60a5fa;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: monospace;
+            font-weight: bold;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .val-input:focus {
+            border-color: #3b82f6;
+        }
+        /* Hide arrows for number inputs */
+        .val-input::-webkit-outer-spin-button,
+        .val-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .val-input[type=number] {
+            -moz-appearance: textfield;
+        }
+        input[type=range] { 
+            width: 100%; 
+            cursor: pointer; 
+            accent-color: #3b82f6; 
+        }
+        .vector-label {
+            font-family: 'Inter', sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(2px);
+            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-shadow: 0 0 2px black;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 lang-en">
+
+    <div class="max-w-6xl mx-auto space-y-10">
+        
+        <header class="text-center space-y-2 border-b border-slate-700 pb-6 relative">
+            <div class="absolute right-0 top-0">
+                <div id="lang-toggle" class="bg-slate-100 rounded-xl p-1 inline-flex items-center cursor-pointer shadow-sm border border-slate-200/50 select-none">
+                    <div id="lang-en-btn" class="px-4 py-1.5 rounded-lg text-sm font-black transition-all">EN</div>
+                    <div id="lang-th-btn" class="px-4 py-1.5 rounded-lg text-sm font-black transition-all">TH</div>
+                </div>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-400">
+                <span class="en">Magnetic Force on a Moving Charge</span>
+                <span class="th">แรงแม่เหล็กที่กระทำต่อประจุไฟฟ้าที่เคลื่อนที่</span>
+            </h1>
+            <p class="text-lg text-slate-400">
+                <span class="en">Interactive 3D Physics Simulation & Step-by-Step Calculations</span>
+                <span class="th">แบบจำลองฟิสิกส์ 3 มิติเชิงโต้ตอบ และการแสดงวิธีทำทีละขั้นตอน</span>
+            </p>
+        </header>
+
+        <section class="space-y-6">
+            <h2 class="text-2xl font-semibold flex items-center">
+                <span class="bg-blue-600 w-8 h-8 rounded-full inline-flex items-center justify-center mr-3 text-sm">1</span>
+                <span class="en">Theoretical Background</span>
+                <span class="th">พื้นฐานทฤษฎี (Theoretical Background)</span>
+            </h2>
+
+            <div class="theory-box mb-6">
+                <h3 class="text-xl font-medium text-blue-300 mb-2">
+                    <span class="en">Lorentz Force</span>
+                    <span class="th">แรงลอเรนตซ์ (Lorentz Force)</span>
+                </h3>
+                <p class="mb-4 text-slate-300">
+                    <span class="en">When a point charge (\(q\)) moves with a velocity (\(\vec{v}\)) through a magnetic field (\(\vec{B}\)), it experiences a magnetic force (\(\vec{F}\)). This fundamental principle is described by the equation:</span>
+                    <span class="th">เมื่อประจุไฟฟ้า (\(q\)) เคลื่อนที่ด้วยความเร็ว (\(\vec{v}\)) เข้าไปในบริเวณที่มีสนามแม่เหล็ก (\(\vec{B}\)) ประจุนั้นจะถูกกระทำด้วยแรงแม่เหล็ก (\(\vec{F}\)) ซึ่งอธิบายได้ด้วยสมการ:</span>
+                </p>
+                <div class="text-center text-xl mb-4">
+                    \[ \vec{F} = q(\vec{v} \times \vec{B}) \]
+                    \[ |\vec{F}| = |q||\vec{v}||\vec{B}|\sin(\theta) \]
+                </div>
+            </div>
+
+            <!-- History of Discovery Section -->
+            <div class="bg-slate-800 p-6 rounded-lg border border-slate-700 mb-6 flex flex-col md:flex-row gap-6 items-start">
+                <div class="flex-shrink-0 w-16 h-16 bg-blue-900/50 rounded-full flex items-center justify-center text-3xl border border-blue-500/30">
+                    🔬
+                </div>
+                <div>
+                    <h3 class="text-xl font-medium text-blue-300 mb-2">
+                        <span class="en">History of Discovery</span>
+                        <span class="th">ประวัติการค้นพบ</span>
+                    </h3>
+                    <p class="text-slate-300 text-sm leading-relaxed mb-2">
+                        <span class="en">The formula for the magnetic force on a moving charge is part of the broader <strong>Lorentz Force Law</strong>. It is named after the Dutch physicist <strong>Hendrik Antoon Lorentz</strong>, who formulated the complete equations for electromagnetic forces in 1895.</span>
+                        <span class="th">สมการของแรงแม่เหล็กที่กระทำต่อประจุไฟฟ้านี้เป็นส่วนหนึ่งของ <strong>กฎแรงลอเรนตซ์ (Lorentz Force Law)</strong> ซึ่งตั้งชื่อเพื่อเป็นเกียรติแก่ <strong>เฮนดริก แอนทูน ลอเรนตซ์ (Hendrik Antoon Lorentz)</strong> นักฟิสิกส์ชาวดัตช์ ผู้รวบรวมและสร้างสมการที่สมบูรณ์สำหรับแรงทางแม่เหล็กไฟฟ้าในปี ค.ศ. 1895</span>
+                    </p>
+                    <p class="text-slate-300 text-sm leading-relaxed">
+                        <span class="en">However, the specific magnetic force component (\( \vec{F} = q(\vec{v} \times \vec{B}) \)) was actually first correctly derived by the English physicist and engineer <strong>Oliver Heaviside</strong> in 1889. Heaviside built his derivation upon the foundational early work of J.J. Thomson from 1881, correcting errors to give us the cross-product form we use today.</span>
+                        <span class="th">อย่างไรก็ตาม องค์ประกอบเฉพาะส่วนที่เป็นแรงแม่เหล็ก (\( \vec{F} = q(\vec{v} \times \vec{B}) \)) นั้น ความจริงแล้วถูกคิดค้นและพิสูจน์ได้อย่างถูกต้องเป็นครั้งแรกโดย <strong>โอลิเวอร์ เฮฟวีไซด์ (Oliver Heaviside)</strong> วิศวกรและนักฟิสิกส์ชาวอังกฤษ ในปี ค.ศ. 1889 โดยเฮฟวีไซด์ได้พัฒนาและแก้ไขข้อผิดพลาดจากแนวคิดเริ่มแรกของ เจ.เจ. ทอมสัน (J.J. Thomson) ในปี 1881 จนกลายเป็นสมการผลคูณเชิงเวกเตอร์ (Cross Product) ที่เราใช้กันในปัจจุบัน</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <h3 class="text-xl font-medium text-amber-400 mb-3">
+                        <span class="en">Direction: Right-Hand Rule</span>
+                        <span class="th">ทิศทาง: กฎมือขวา (Right-Hand Rule)</span>
+                    </h3>
+                    <p class="text-slate-300 mb-3">
+                        <span class="en">To determine the direction of the magnetic force on a <strong>positive charge</strong>, use your right hand:</span>
+                        <span class="th">ในการหาทิศทางของแรงแม่เหล็กที่กระทำต่อ <strong>ประจุบวก</strong> ให้ใช้มือขวาของคุณ:</span>
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-slate-300 ml-2">
+                        <li><span class="text-blue-400 font-bold en">Fingers: Direction of Velocity (\(\vec{v}\))</span><span class="text-blue-400 font-bold th">ปลายนิ้วทั้งสี่: ชี้ไปทาง ความเร็ว (\(\vec{v}\))</span></li>
+                        <li><span class="text-green-400 font-bold en">Palm: Direction of Magnetic Field (\(\vec{B}\))</span><span class="text-green-400 font-bold th">ฝ่ามือ: หันไปทาง สนามแม่เหล็ก (\(\vec{B}\))</span></li>
+                        <li><span class="text-red-400 font-bold en">Thumb: Direction of Magnetic Force (\(\vec{F}\))</span><span class="text-red-400 font-bold th">นิ้วหัวแม่มือ: ชี้ทิศทาง แรงแม่เหล็ก (\(\vec{F}\))</span></li>
+                    </ul>
+                    <p class="mt-4 text-sm text-amber-200/80 bg-amber-900/30 p-2 rounded">
+                        <span class="en">*Note: For a <strong>negative charge</strong>, the force is in the <strong>opposite</strong> direction of your thumb.</span>
+                        <span class="th">*หมายเหตุ: สำหรับ <strong>ประจุลบ</strong> ทิศทางของแรงจะ <strong>ตรงข้าม</strong> กับนิ้วหัวแม่มือเสมอ</span>
+                    </p>
+                </div>
+
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <h3 class="text-xl font-medium text-purple-400 mb-3">
+                        <span class="en">Why Circular Motion?</span>
+                        <span class="th">ทำไมถึงเคลื่อนที่เป็นวงกลม?</span>
+                    </h3>
+                    <p class="text-slate-300 mb-3">
+                        <span class="en">The magnetic force (\(\vec{F}\)) is always <strong>perpendicular</strong> to the velocity (\(\vec{v}\)). A force perpendicular to motion acts as a <strong>Centripetal Force</strong>, changing direction without changing speed, resulting in a circular or helical path.</span>
+                        <span class="th">แรงแม่เหล็ก (\(\vec{F}\)) จะ <strong>ตั้งฉาก</strong> กับความเร็ว (\(\vec{v}\)) เสมอ ซึ่งแรงที่ตั้งฉากกับการเคลื่อนที่จะทำหน้าที่เป็น <strong>แรงสู่ศูนย์กลาง (Centripetal Force)</strong> ทำให้ประจุเปลี่ยนทิศทางโดยไม่เปลี่ยนความเร็ว จึงเกิดการเคลื่อนที่เป็นวงกลมหรือเกลียว</span>
+                    </p>
+                    <div class="text-center bg-slate-900/50 p-2 rounded mt-4">
+                        \[ F_B = F_c \implies qvB = \frac{mv^2}{r} \implies r = \frac{mv}{qB} \]
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 p-6 rounded-lg border border-slate-700 md:col-span-2">
+                    <h3 class="text-xl font-medium text-teal-400 mb-3">
+                        <span class="en">2D Representation of 3D Vectors (Dot & Cross)</span>
+                        <span class="th">สัญลักษณ์แทนทิศทาง 3 มิติ (จุด \(\odot\) และ กากบาท \(\otimes\))</span>
+                    </h3>
+                    <p class="text-slate-300 mb-3">
+                        <span class="en">In textbooks, magnetic fields or forces perpendicular to the page are often represented by dots and crosses, using an arrow analogy:</span>
+                        <span class="th">ในหนังสือเรียนหรือข้อสอบ มักจะเขียนเวกเตอร์สนามแม่เหล็กหรือความเร็วที่ตั้งฉากกับหน้ากระดาษด้วยสัญลักษณ์ <strong>จุด (Dot)</strong> และ <strong>กากบาท (Cross)</strong> โดยเปรียบเทียบกับ "ลูกศรธนู" ดังนี้:</span>
+                    </p>
+                    <div class="grid md:grid-cols-2 gap-4 text-center mt-4">
+                        <div class="bg-slate-900/50 p-4 rounded border border-slate-700 flex flex-col items-center justify-center">
+                            <div class="text-xl text-teal-300 mb-4 leading-loose tracking-widest">
+                                <div>\(\odot \quad \odot \quad \odot\)</div>
+                                <div>\(\odot \quad \odot \quad \odot\)</div>
+                                <div>\(\odot \quad \odot \quad \odot\)</div>
+                            </div>
+                            <div class="font-bold text-slate-200"><span class="en">Dot (Out of Page)</span><span class="th">จุด (พุ่งออก)</span></div>
+                            <div class="text-sm text-slate-400 mt-1"><span class="en">Arrow tip pointing towards you</span><span class="th">เปรียบเสมือนมองเห็น <strong>หัวลูกศร</strong> พุ่งเข้าหาตัวเรา</span></div>
+                        </div>
+                        <div class="bg-slate-900/50 p-4 rounded border border-slate-700 flex flex-col items-center justify-center">
+                            <div class="text-xl text-teal-300 mb-4 leading-loose tracking-widest">
+                                <div>\(\otimes \quad \otimes \quad \otimes\)</div>
+                                <div>\(\otimes \quad \otimes \quad \otimes\)</div>
+                                <div>\(\otimes \quad \otimes \quad \otimes\)</div>
+                            </div>
+                            <div class="font-bold text-slate-200"><span class="en">Cross (Into Page)</span><span class="th">กากบาท (พุ่งเข้า)</span></div>
+                            <div class="text-sm text-slate-400 mt-1"><span class="en">Arrow tail pointing away from you</span><span class="th">เปรียบเสมือนมองเห็น <strong>หางลูกศร</strong> พุ่งออกห่างตัวเรา</span></div>
+                        </div>
+
+                        <!-- Example Usage Grid -->
+                        <div class="md:col-span-2 grid lg:grid-cols-2 gap-4 mt-2">
+                            
+                            <!-- Example 1: Into Page (Cross) -->
+                            <div class="bg-slate-900/40 p-5 rounded-lg border border-slate-700/50 flex flex-col items-center text-center gap-4">
+                                <h4 class="text-amber-400 font-bold text-lg w-full border-b border-slate-700 pb-2">
+                                    <span class="en">Example: Into Page (\(\otimes\))</span>
+                                    <span class="th">ตัวอย่าง: สนามแม่เหล็กพุ่งเข้า (\(\otimes\))</span>
+                                </h4>
+                                <div class="text-sm text-slate-300 text-left w-full">
+                                    <p><span class="en">If a <strong class="text-blue-400">+q</strong> moves right (<strong class="text-blue-400">\(\rightarrow \vec{v}\)</strong>) through a field pointing into the page (<strong class="text-green-400">\(\otimes \vec{B}\)</strong>):</span><span class="th">หาก <strong class="text-blue-400">ประจุบวก (+q)</strong> เคลื่อนที่ไปทางขวา (<strong class="text-blue-400">\(\rightarrow \vec{v}\)</strong>) ตัดผ่านสนามแม่เหล็กที่พุ่งเข้ากระดาษ (<strong class="text-green-400">\(\otimes \vec{B}\)</strong>):</span></p>
+                                    <ul class="list-disc ml-5 mt-2 text-slate-400 space-y-1">
+                                        <li><span class="en">Fingers right (\(\vec{v}\))</span><span class="th">นิ้วทั้งสี่ชี้ขวา (ทิศ \(\vec{v}\))</span></li>
+                                        <li><span class="en">Palm faces into screen (\(\vec{B}\))</span><span class="th">หันฝ่ามือพุ่งเข้าหน้าจอ (ทิศ \(\vec{B}\))</span></li>
+                                        <li><span class="en">Thumb points UP. Force is <strong class="text-red-400">Up (\(\uparrow \vec{F}\))</strong></span><span class="th">นิ้วโป้งชี้ขึ้น ทิศของแรงคือ <strong class="text-red-400">ชี้ขึ้น (\(\uparrow \vec{F}\))</strong></span></li>
+                                    </ul>
+                                </div>
+                                <div class="relative w-40 h-40 bg-slate-800 rounded-lg border border-slate-600 shadow-inner flex items-center justify-center flex-shrink-0 mt-2">
+                                    <!-- B Field Background -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-around text-green-500/30 text-sm py-2">
+                                        <div>\(\otimes \quad \otimes \quad \otimes\)</div>
+                                        <div>\(\otimes \quad \otimes \quad \otimes\)</div>
+                                        <div>\(\otimes \quad \otimes \quad \otimes\)</div>
+                                    </div>
+                                    <!-- Particle -->
+                                    <div class="absolute w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-[0_0_15px_rgba(37,99,235,0.8)] z-20">+q</div>
+                                    
+                                    <!-- Velocity Arrow (SVG Right) -->
+                                    <svg class="absolute w-16 h-8 left-[calc(50%+8px)] top-1/2 -translate-y-1/2 overflow-visible z-10" viewBox="0 0 60 20">
+                                        <line x1="0" y1="10" x2="52" y2="10" stroke="#60a5fa" stroke-width="3" />
+                                        <polygon points="50,4 60,10 50,16" fill="#60a5fa" />
+                                    </svg>
+                                    <span class="absolute right-1 top-[calc(50%-24px)] text-blue-300 font-bold text-xs z-10">\(\vec{v}\)</span>
+
+                                    <!-- Force Arrow (SVG Up) -->
+                                    <svg class="absolute w-8 h-16 bottom-[calc(50%+8px)] left-1/2 -translate-x-1/2 overflow-visible z-10" viewBox="0 0 20 60">
+                                        <line x1="10" y1="60" x2="10" y2="8" stroke="#f87171" stroke-width="3" />
+                                        <polygon points="4,10 10,0 16,10" fill="#f87171" />
+                                    </svg>
+                                    <span class="absolute top-1 right-[calc(50%-26px)] text-red-400 font-bold text-xs z-10">\(\vec{F}\)</span>
+                                </div>
+                            </div>
+
+                            <!-- Example 2: Out of Page (Dot) -->
+                            <div class="bg-slate-900/40 p-5 rounded-lg border border-slate-700/50 flex flex-col items-center text-center gap-4">
+                                <h4 class="text-amber-400 font-bold text-lg w-full border-b border-slate-700 pb-2">
+                                    <span class="en">Example: Out of Page (\(\odot\))</span>
+                                    <span class="th">ตัวอย่าง: สนามแม่เหล็กพุ่งออก (\(\odot\))</span>
+                                </h4>
+                                <div class="text-sm text-slate-300 text-left w-full">
+                                    <p><span class="en">If a <strong class="text-blue-400">+q</strong> moves right (<strong class="text-blue-400">\(\rightarrow \vec{v}\)</strong>) through a field pointing out of the page (<strong class="text-teal-400">\(\odot \vec{B}\)</strong>):</span><span class="th">หาก <strong class="text-blue-400">ประจุบวก (+q)</strong> เคลื่อนที่ไปทางขวา (<strong class="text-blue-400">\(\rightarrow \vec{v}\)</strong>) ตัดผ่านสนามแม่เหล็กที่พุ่งออกกระดาษ (<strong class="text-teal-400">\(\odot \vec{B}\)</strong>):</span></p>
+                                    <ul class="list-disc ml-5 mt-2 text-slate-400 space-y-1">
+                                        <li><span class="en">Fingers right (\(\vec{v}\))</span><span class="th">นิ้วทั้งสี่ชี้ขวา (ทิศ \(\vec{v}\))</span></li>
+                                        <li><span class="en">Palm faces out to you (\(\vec{B}\))</span><span class="th">หันฝ่ามือพุ่งออกจากหน้าจอหาตัวเรา (ทิศ \(\vec{B}\))</span></li>
+                                        <li><span class="en">Thumb points DOWN. Force is <strong class="text-red-400">Down (\(\downarrow \vec{F}\))</strong></span><span class="th">นิ้วโป้งชี้ลง ทิศของแรงคือ <strong class="text-red-400">ชี้ลง (\(\downarrow \vec{F}\))</strong></span></li>
+                                    </ul>
+                                </div>
+                                <div class="relative w-40 h-40 bg-slate-800 rounded-lg border border-slate-600 shadow-inner flex items-center justify-center flex-shrink-0 mt-2">
+                                    <!-- B Field Background -->
+                                    <div class="absolute inset-0 flex flex-col items-center justify-around text-teal-400/40 text-sm py-2">
+                                        <div>\(\odot \quad \odot \quad \odot\)</div>
+                                        <div>\(\odot \quad \odot \quad \odot\)</div>
+                                        <div>\(\odot \quad \odot \quad \odot\)</div>
+                                    </div>
+                                    <!-- Particle -->
+                                    <div class="absolute w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-[0_0_15px_rgba(37,99,235,0.8)] z-20">+q</div>
+                                    
+                                    <!-- Velocity Arrow (SVG Right) -->
+                                    <svg class="absolute w-16 h-8 left-[calc(50%+8px)] top-1/2 -translate-y-1/2 overflow-visible z-10" viewBox="0 0 60 20">
+                                        <line x1="0" y1="10" x2="52" y2="10" stroke="#60a5fa" stroke-width="3" />
+                                        <polygon points="50,4 60,10 50,16" fill="#60a5fa" />
+                                    </svg>
+                                    <span class="absolute right-1 top-[calc(50%-24px)] text-blue-300 font-bold text-xs z-10">\(\vec{v}\)</span>
+
+                                    <!-- Force Arrow (SVG Down) -->
+                                    <svg class="absolute w-8 h-16 top-[calc(50%+8px)] left-1/2 -translate-x-1/2 overflow-visible z-10" viewBox="0 0 20 60">
+                                        <line x1="10" y1="0" x2="10" y2="52" stroke="#f87171" stroke-width="3" />
+                                        <polygon points="4,50 10,60 16,50" fill="#f87171" />
+                                    </svg>
+                                    <span class="absolute bottom-1 right-[calc(50%-26px)] text-red-400 font-bold text-xs z-10">\(\vec{F}\)</span>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-4">
+            <h2 class="text-2xl font-semibold flex items-center">
+                <span class="bg-green-600 w-8 h-8 rounded-full inline-flex items-center justify-center mr-3 text-sm">2</span>
+                <span class="en">3D Interactive Simulation & Parameters</span>
+                <span class="th">แบบจำลอง 3 มิติ และการตั้งค่าตัวแปร</span>
+            </h2>
+            
+            <div class="grid lg:grid-cols-3 gap-6">
+                <!-- 3D Canvas (Left Side) -->
+                <div class="lg:col-span-2 border border-slate-600 rounded-xl overflow-hidden shadow-2xl relative bg-black flex flex-col h-[500px] lg:h-[600px]">
+                    <div id="sim-container" class="flex-grow w-full h-full"></div>
+                    
+                    <div class="absolute top-4 left-4 bg-slate-900/80 p-4 border border-slate-700 rounded-lg backdrop-blur z-10 text-sm">
+                        <p class="font-bold mb-2 text-slate-200 border-b border-slate-600 pb-1">
+                            <span class="en">Vectors Legend</span>
+                            <span class="th">สัญลักษณ์เวกเตอร์</span>
+                        </p>
+                        <div class="flex items-center mt-1"><div class="w-4 h-1 bg-green-500 mr-2"></div> <span class="en">\(\vec{B}\) (Magnetic Field)</span><span class="th">\(\vec{B}\) (สนามแม่เหล็ก)</span></div>
+                        <div class="flex items-center mt-1"><div class="w-4 h-1 bg-blue-500 mr-2"></div> <span class="en">\(\vec{v}\) (Velocity)</span><span class="th">\(\vec{v}\) (ความเร็ว)</span></div>
+                        <div class="flex items-center mt-1"><div class="w-4 h-1 bg-red-500 mr-2"></div> <span class="en">\(\vec{F}\) (Magnetic Force)</span><span class="th">\(\vec{F}\) (แรงแม่เหล็ก)</span></div>
+                        <div class="flex items-center mt-1"><span class="text-yellow-400 font-bold w-4 mr-2 text-center text-lg">&theta;</span> <span class="en">Launch Angle</span><span class="th">มุมการเคลื่อนที่ (ทำกับ \(\vec{B}\))</span></div>
+                        <p id="rhr-hint" class="mt-3 text-xs font-semibold text-amber-300"></p>
+                    </div>
+
+                    <div class="absolute top-4 right-4 flex flex-col space-y-2 z-10">
+                        <button id="view-x" class="bg-slate-700 hover:bg-slate-600 text-xs text-white px-3 py-2 rounded transition border border-slate-500">View +X</button>
+                        <button id="view-y" class="bg-slate-700 hover:bg-slate-600 text-xs text-white px-3 py-2 rounded transition border border-slate-500">View +Y</button>
+                        <button id="view-z" class="bg-slate-700 hover:bg-slate-600 text-xs text-white px-3 py-2 rounded transition border border-slate-500">View +Z</button>
+                        <button id="view-reset" class="bg-blue-600 hover:bg-blue-500 text-xs text-white px-3 py-2 rounded transition mt-2">Reset View</button>
+                    </div>
+
+                    <div class="absolute bottom-4 left-4 bg-slate-800/80 p-2 rounded backdrop-blur text-xs text-slate-300 z-10 pointer-events-none">
+                        <span class="en">Left Click + Drag to Orbit | Scroll to Zoom</span>
+                        <span class="th">คลิกซ้ายลากเพื่อหมุนมุมมอง | เลื่อนเมาส์เพื่อซูม</span>
+                    </div>
+                </div>
+
+                <!-- Controls Panel (Right Side) -->
+                <div class="lg:col-span-1 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg overflow-y-auto flex flex-col">
+                    <h3 class="text-lg font-medium text-white mb-6 border-b border-slate-700 pb-2">
+                        <span class="en">Adjust Parameters</span>
+                        <span class="th">ปรับตั้งค่าตัวแปร</span>
+                    </h3>
+                    
+                    <div class="space-y-6 flex-grow">
+                        <!-- Charge Number (n) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="q-num" class="text-slate-300 text-sm">
+                                    <span class="en">Number of Charges (n)</span>
+                                    <span class="th">จำนวนประจุพื้นฐาน (n)</span>
+                                </label>
+                                <div class="flex items-center space-x-1">
+                                    <input type="number" id="q-num" class="val-input w-16 text-right" value="1" min="-5" max="5" step="1">
+                                    <span class="text-slate-400 text-xs font-mono">e</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-bold text-red-400">-5</span>
+                                <input type="range" id="q-slider" min="-5" max="5" value="1" step="1">
+                                <span class="text-sm font-bold text-blue-400">+5</span>
+                            </div>
+                        </div>
+
+                        <!-- Velocity (v) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="v-num" class="text-slate-300 text-sm">
+                                    <span class="en">Initial Velocity (v)</span>
+                                    <span class="th">ความเร็วเริ่มต้น (v)</span>
+                                </label>
+                                <div class="flex items-center space-x-1">
+                                    <input type="number" id="v-num" class="val-input w-16 text-right" value="5" min="1" max="15" step="1">
+                                    <span class="text-slate-400 text-xs font-mono">m/s</span>
+                                </div>
+                            </div>
+                            <input type="range" id="v-slider" min="1" max="15" value="5" step="1">
+                        </div>
+
+                        <!-- B Field -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="b-num" class="text-slate-300 text-sm">
+                                    <span class="en">Magnetic Field (B)</span>
+                                    <span class="th">ความเข้มสนามแม่เหล็ก (B)</span>
+                                </label>
+                                <div class="flex items-center space-x-1">
+                                    <input type="number" id="b-num" class="val-input w-16 text-right" value="2" min="0.5" max="5" step="0.5">
+                                    <span class="text-slate-400 text-xs font-mono">T</span>
+                                </div>
+                            </div>
+                            <input type="range" id="b-slider" min="0.5" max="5" value="2" step="0.5">
+                        </div>
+
+                        <!-- Angle -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label for="angle-num" class="text-slate-300 text-sm">
+                                    <span class="en">Launch Angle (\(\theta\) with B)</span>
+                                    <span class="th">มุมการเคลื่อนที่ (\(\theta\))</span>
+                                </label>
+                                <div class="flex items-center space-x-1">
+                                    <input type="number" id="angle-num" class="val-input w-16 text-right text-yellow-300" value="90" min="0" max="180" step="1">
+                                    <span class="text-slate-400 text-xs font-mono">°</span>
+                                </div>
+                            </div>
+                            <input type="range" id="angle-slider" min="0" max="180" value="90" step="1" style="accent-color: #eab308;">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 pt-4 mt-auto">
+                            <button id="btn-fire" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded transition-colors shadow-lg shadow-blue-500/20">
+                                <span class="en">Play</span>
+                                <span class="th">ยิงประจุ</span>
+                            </button>
+                            <button id="btn-reset" class="bg-slate-700 hover:bg-slate-600 text-white py-3 px-4 rounded transition-colors border border-slate-600">
+                                <span class="en">Reset</span>
+                                <span class="th">รีเซ็ต</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="space-y-6 mt-8">
+            <h2 class="text-2xl font-semibold flex items-center">
+                <span class="bg-purple-600 w-8 h-8 rounded-full inline-flex items-center justify-center mr-3 text-sm">3</span>
+                <span class="en">Calculation Examples</span>
+                <span class="th">ตัวอย่างการคำนวณ</span>
+            </h2>
+
+            <!-- Live Calculation Box -->
+            <div class="bg-slate-800 p-6 md:p-8 rounded-xl border border-slate-700 shadow-lg flex flex-col">
+                <h3 class="text-xl font-medium text-white mb-6 border-b border-slate-700 pb-2">
+                    <span class="en">Live Example Calculation</span>
+                    <span class="th">ตัวอย่างการคำนวณจากค่าด้านบน</span>
+                    <span id="mass-display" class="text-sm text-amber-300 float-right mt-1 font-mono font-bold"></span>
+                </h3>
+                
+                <div class="space-y-8 flex-grow math-block text-base md:text-lg overflow-x-auto">
+                    
+                    <!-- Example 1: Force -->
+                        <div>
+                            <div class="text-blue-300 mb-2 font-bold text-xl">
+                                <span class="en">Example 1: Calculate Magnetic Force (F)</span>
+                                <span class="th">ตัวอย่างที่ 1: การคำนวณหาแรงแม่เหล็ก (F)</span>
+                            </div>
+                            <p class="text-sm text-slate-400 mb-4">
+                                <span class="en">Explanation: Use the Lorentz force equation to find the magnitude. We use the absolute value of charge (|q|) because force magnitude is always positive. Direction is found via Right-Hand Rule.</span>
+                                <span class="th">อธิบาย: ใช้สมการแรงลอเรนตซ์เพื่อหาขนาดของแรงแม่เหล็ก โดยจะใช้ค่าสัมบูรณ์ของประจุ (|q|) เพื่อให้ขนาดเป็นบวกเสมอ ส่วนทิศทางของแรงจะหาได้จากกฎมือขวา</span>
+                            </p>
+                            <!-- Grid layout for perfect '=' alignment -->
+                            <div class="grid grid-cols-[100px_20px_1fr] md:grid-cols-[120px_20px_1fr] gap-x-2 gap-y-3 items-center text-slate-200">
+                                <div class="text-right text-slate-500 en font-bold">Formula</div><div class="text-right text-slate-500 th font-bold">สูตร</div>
+                                <div class="text-center text-slate-500">=</div>
+                                <div>|q| &times; v &times; B &times; sin(&theta;)</div>
+                                
+                                <div class="text-right text-slate-500 en font-bold">Substitute</div><div class="text-right text-slate-500 th font-bold">แทนค่า</div>
+                                <div class="text-center text-slate-500">=</div>
+                                <div>| <span id="c-q">1.6&times;10<sup>-19</sup></span> | &times; <span id="c-v">5</span> &times; <span id="c-b">2</span> &times; sin(<span id="c-ang">90</span>&deg;)</div>
+                            </div>
+                            <div class="mt-4 bg-slate-900/50 p-4 rounded-lg inline-flex items-center space-x-4 border border-slate-700 shadow-inner">
+                                <span class="text-slate-400 en font-semibold">Result:</span><span class="text-slate-400 th font-semibold">ผลลัพธ์:</span>
+                                <span class="text-red-400 font-bold text-xl md:text-2xl">F = <span id="res-f">1.60 &times; 10<sup>-18</sup></span> N</span>
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-700 my-8">
+
+                        <!-- Example 2: Radius -->
+                        <div>
+                            <div class="text-purple-300 mb-2 font-bold text-xl">
+                                <span class="en">Example 2: Radius of Curvature (r)</span>
+                                <span class="th">ตัวอย่างที่ 2: การคำนวณรัศมีความโค้ง (r)</span>
+                            </div>
+                            <p class="text-sm text-slate-400 mb-4">
+                                <span class="en">Explanation: Equate magnetic force to centripetal force (\(F_B = F_c\)). The radius depends only on the velocity component perpendicular to the magnetic field (\(v_\perp = v \cdot \sin(\theta)\)).</span>
+                                <span class="th">อธิบาย: เมื่อแรงแม่เหล็กตั้งฉากกับความเร็ว จะเกิด "แรงสู่ศูนย์กลาง" (\(F_B = F_c\)) ทำให้วิ่งเป็นวงกลม การหารัศมีจะใช้เฉพาะความเร็วในแนวที่ตั้งฉากกับสนามแม่เหล็ก (\(v_\perp = v \cdot \sin(\theta)\))</span>
+                            </p>
+                            
+                            <!-- Grid layout for perfect '=' alignment -->
+                            <div class="grid grid-cols-[100px_20px_1fr] md:grid-cols-[120px_20px_1fr] gap-x-2 gap-y-6 items-center text-slate-200">
+                                <div class="text-right text-slate-500 en font-bold">Formula</div><div class="text-right text-slate-500 th font-bold">สูตร</div>
+                                <div class="text-center text-slate-500"></div>
+                                <div class="flex items-center space-x-3 text-lg md:text-xl">
+                                    <span class="text-purple-300 font-bold">r =</span>
+                                    <div class="inline-flex flex-col items-center text-center">
+                                        <span class="border-b border-slate-400 pb-1 px-3">m &times; v &times; sin(&theta;)</span>
+                                        <span class="pt-1 px-3">|q| &times; B</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-right text-slate-500 en font-bold">Substitute</div><div class="text-right text-slate-500 th font-bold">แทนค่า</div>
+                                <div class="text-center text-slate-500"></div>
+                                <div class="flex items-center space-x-3 text-lg md:text-xl">
+                                    <span class="text-purple-300 font-bold">r =</span>
+                                    <div class="inline-flex flex-col items-center text-center">
+                                        <span class="border-b border-slate-400 pb-1 px-3"><span id="c-m" class="text-amber-200">1.67&times;10<sup>-27</sup></span> &times; <span id="c-v2">5</span> &times; <span id="c-sin">1.00</span></span>
+                                        <span class="pt-1 px-3">| <span id="c-q2">1.6&times;10<sup>-19</sup></span> | &times; <span id="c-b2">2</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-6 bg-slate-900/50 p-4 rounded-lg inline-flex items-center space-x-4 border border-slate-700 shadow-inner">
+                                <span class="text-slate-400 en font-semibold">Result:</span><span class="text-slate-400 th font-semibold">ผลลัพธ์:</span>
+                                <span class="text-purple-400 font-bold text-xl md:text-2xl">r = <span id="res-r">2.50</span></span>
+                            </div>
+                        </div>
+
+                </div>
+            </div>
+        </section>
+        
+        <footer class="text-center text-slate-500 text-sm py-8 border-t border-slate-800 mt-8">
+            <p><strong>Developed by OpenSimLab.org</strong></p>
+            <p class="mt-1">Coded by AI Assistant | Physics Interactive Simulation Project</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // --- 0. Language Toggle Logic ---
+        const langToggle = document.getElementById('lang-toggle');
+        const enBtn = document.getElementById('lang-en-btn');
+        const thBtn = document.getElementById('lang-th-btn');
+
+        function updateToggleUI() {
+            const body = document.body;
+            if (body.classList.contains('lang-en')) {
+                enBtn.className = "px-4 py-1.5 rounded-lg text-sm font-black transition-all bg-white text-slate-700 shadow-sm";
+                thBtn.className = "px-4 py-1.5 rounded-lg text-sm font-black transition-all text-orange-400 hover:text-orange-500";
+            } else {
+                thBtn.className = "px-4 py-1.5 rounded-lg text-sm font-black transition-all bg-white text-orange-500 shadow-sm";
+                enBtn.className = "px-4 py-1.5 rounded-lg text-sm font-black transition-all text-slate-400 hover:text-slate-500";
+            }
+        }
+
+        langToggle.addEventListener('click', () => {
+            const body = document.body;
+            if (body.classList.contains('lang-th')) {
+                body.classList.replace('lang-th', 'lang-en');
+            } else {
+                body.classList.replace('lang-en', 'lang-th');
+            }
+            updateToggleUI();
+        });
+
+        updateToggleUI(); // Initialize UI state
+
+        // --- 1. Three.js Initialization ---
+        const container = document.getElementById('sim-container');
+        let width = container.clientWidth;
+        let height = container.clientHeight;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        const defaultCamPos = new THREE.Vector3(15, 12, 20);
+        camera.position.copy(defaultCamPos);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const labelRenderer = new THREE.CSS2DRenderer();
+        labelRenderer.setSize(width, height);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none'; 
+        container.appendChild(labelRenderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 50;
+        controls.minDistance = 5;
+
+        // --- 2. Lighting & Environment ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        scene.add(new THREE.GridHelper(40, 40, 0x334155, 0x1e293b).translateY(-5));
+        scene.add(new THREE.AxesHelper(5).translateY(-5));
+
+        const bFieldGroup = new THREE.Group();
+        const bFieldMat = new THREE.LineBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.15 });
+        for(let i=-15; i<=15; i+=5) {
+            for(let j=-15; j<=15; j+=5) {
+                const bgArrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(i,-5,j), 10, 0x22c55e, 0.6, 0.4);
+                bgArrow.line.material = bFieldMat;
+                bgArrow.cone.material.transparent = true; bgArrow.cone.material.opacity = 0.2;
+                bFieldGroup.add(bgArrow);
+            }
+        }
+        scene.add(bFieldGroup);
+
+        // --- Faint Uniform B-Field Lines ---
+        const bFieldLines = new THREE.Group();
+        const bLineMat = new THREE.LineBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.04 });
+        for(let x = -20; x <= 20; x += 2.5) {
+            for(let z = -20; z <= 20; z += 2.5) {
+                // เว้นพื้นที่ตรงกลางไว้เล็กน้อย เพื่อไม่ให้เส้นบังตัวประจุและเวกเตอร์หลัก
+                if (Math.abs(x) < 4 && Math.abs(z) < 4) continue;
+                
+                const points = [];
+                points.push(new THREE.Vector3(x, -5, z));
+                points.push(new THREE.Vector3(x, 25, z));
+                const geo = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geo, bLineMat);
+                bFieldLines.add(line);
+            }
+        }
+        scene.add(bFieldLines);
+
+        // --- 3. Physics Setup & Particles ---
+        // Constants for real physics representation but scaled for visualization
+        const e_charge = 1.6e-19; // Elementary charge in Coulombs
+        const sys_mass = 1.6e-19; // Scaled mass (kg) so r = (m*v)/(q*B) remains visible in meters
+        
+        let isSimulating = false;
+        let n_charge = 1; // Multiplier (-5 to +5)
+        let v_mag = 5;
+        let b_mag = 2;
+        let angle_deg = 90;
+
+        let pos = new THREE.Vector3(0, 0, 0);
+        let vel = new THREE.Vector3(0, 0, 0);
+        let B_vec = new THREE.Vector3(0, 1, 0);
+        let F_vec = new THREE.Vector3(0, 0, 0);
+
+        const particleMat = new THREE.MeshPhongMaterial({ color: 0x3b82f6, emissive: 0x1d4ed8 });
+        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.8, 32, 32), particleMat);
+        scene.add(particle);
+
+        const maxTrail = 800;
+        const trailPos = new Float32Array(maxTrail * 3);
+        const trailGeo = new THREE.BufferGeometry();
+        trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+        const trailLine = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0x94a3b8, linewidth: 2, transparent: true, opacity: 0.8 }));
+        scene.add(trailLine);
+        let trailCount = 0;
+
+        // Vector Arrows & Labels
+        function createLabel(txt, colClass) {
+            const div = document.createElement('div');
+            div.className = `vector-label ${colClass}`;
+            div.innerHTML = txt;
+            return new THREE.CSS2DObject(div);
+        }
+
+        const arrH_L = 1.2, arrH_W = 0.8;
+        const vArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), pos, 1, 0x3b82f6, arrH_L, arrH_W);
+        const fArrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), pos, 1, 0xef4444, arrH_L, arrH_W);
+        const bArrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), pos, 1, 0x22c55e, arrH_L, arrH_W);
+        scene.add(vArrow); scene.add(fArrow); scene.add(bArrow);
+
+        const vLabel = createLabel('<b>v</b>', 'text-blue-400');
+        const fLabel = createLabel('<b>F</b>', 'text-red-400');
+        const bLabel = createLabel('<b>B</b>', 'text-green-400');
+        scene.add(vLabel); scene.add(fLabel); scene.add(bLabel);
+
+        // --- Angle Arc & Label ---
+        const angleMat = new THREE.LineBasicMaterial({ color: 0xfacc15, linewidth: 2 });
+        const angleArcGeo = new THREE.BufferGeometry();
+        const angleArc = new THREE.Line(angleArcGeo, angleMat);
+        scene.add(angleArc);
+        
+        const angleLabel = createLabel('<b>&theta;</b>', 'text-yellow-300 text-lg');
+        scene.add(angleLabel);
+
+        // --- 4. Camera & UI Event Listeners ---
+        document.getElementById('view-x').addEventListener('click', () => { camera.position.set(25, 0, 0); controls.target.set(0,0,0); });
+        document.getElementById('view-y').addEventListener('click', () => { camera.position.set(0, 25, 0); controls.target.set(0,0,0); });
+        document.getElementById('view-z').addEventListener('click', () => { camera.position.set(0, 0, 25); controls.target.set(0,0,0); });
+        document.getElementById('view-reset').addEventListener('click', () => { camera.position.copy(defaultCamPos); controls.target.set(0,0,0); });
+
+        const ui = {
+            qSlider: document.getElementById('q-slider'), qNum: document.getElementById('q-num'),
+            vSlider: document.getElementById('v-slider'), vNum: document.getElementById('v-num'),
+            bSlider: document.getElementById('b-slider'), bNum: document.getElementById('b-num'),
+            angleSlider: document.getElementById('angle-slider'), angleNum: document.getElementById('angle-num'),
+            btnFire: document.getElementById('btn-fire')
+        };
+
+        // Sync inputs and sliders
+        function handleNumInput(numElem, sliderElem) {
+            let val = parseFloat(numElem.value);
+            if (!isNaN(val)) {
+                sliderElem.value = val;
+                updateMathDisplay();
+            }
+        }
+        function handleSliderInput(sliderElem, numElem) {
+            numElem.value = sliderElem.value;
+            updateMathDisplay();
+        }
+
+        [
+            { s: ui.qSlider, n: ui.qNum },
+            { s: ui.vSlider, n: ui.vNum },
+            { s: ui.bSlider, n: ui.bNum },
+            { s: ui.angleSlider, n: ui.angleNum }
+        ].forEach(pair => {
+            pair.s.addEventListener('input', () => handleSliderInput(pair.s, pair.n));
+            pair.n.addEventListener('input', () => handleNumInput(pair.n, pair.s));
+            pair.n.addEventListener('change', () => { 
+                // Enforce bounds when user finishes typing
+                let val = parseFloat(pair.n.value);
+                if(isNaN(val)) val = parseFloat(pair.s.value);
+                const min = parseFloat(pair.s.min);
+                const max = parseFloat(pair.s.max);
+                if (val < min) val = min;
+                if (val > max) val = max;
+                pair.n.value = val;
+                pair.s.value = val;
+                updateMathDisplay();
+            });
+        });
+
+        // Helper: Convert numbers to HTML Scientific Notation
+        function toSci(num) {
+            if (num === 0) return "0";
+            if (!isFinite(num)) return "&infin;";
+            let str = num.toExponential(2); // e.g. "1.60e-18"
+            let [base, exp] = str.split('e');
+            return `${base} &times; 10<sup>${parseInt(exp)}</sup>`;
+        }
+
+        function updateMathDisplay() {
+            n_charge = parseFloat(ui.qNum.value) || 0;
+            v_mag = parseFloat(ui.vNum.value) || 0;
+            b_mag = parseFloat(ui.bNum.value) || 0;
+            angle_deg = parseFloat(ui.angleNum.value) || 0;
+            let actual_charge_C = n_charge * e_charge;
+
+            const rhrHint = document.getElementById('rhr-hint');
+            const isThai = document.body.classList.contains('lang-th');
+
+            // Mass Selection for physically accurate calculation
+            let actual_mass_kg = 0;
+            let mass_str = "";
+            let mass_sci = "";
+            if (n_charge > 0) {
+                actual_mass_kg = Math.abs(n_charge) * 1.67e-27; // Proton mass
+                mass_str = isThai ? "มวลโปรตอน" : "Proton Mass";
+                mass_sci = n_charge === 1 ? "1.67&times;10<sup>-27</sup>" : `${Math.abs(n_charge)} &times; 1.67&times;10<sup>-27</sup>`;
+            } else if (n_charge < 0) {
+                actual_mass_kg = Math.abs(n_charge) * 9.11e-31; // Electron mass
+                mass_str = isThai ? "มวลอิเล็กตรอน" : "Electron Mass";
+                mass_sci = n_charge === -1 ? "9.11&times;10<sup>-31</sup>" : `${Math.abs(n_charge)} &times; 9.11&times;10<sup>-31</sup>`;
+            }
+
+            const massDisplay = document.getElementById('mass-display');
+            if (n_charge !== 0) {
+                massDisplay.innerHTML = `m &approx; ${mass_sci} kg (${mass_str})`;
+            } else {
+                massDisplay.innerHTML = `m = 0 kg`;
+            }
+
+            if (n_charge > 0) {
+                particleMat.color.setHex(0x3b82f6); particleMat.emissive.setHex(0x1d4ed8);
+                rhrHint.innerHTML = isThai ? "ประจุบวก: แรง (สีแดง) ไปตามนิ้วโป้ง" : "Positive Charge: Force (Red) follows thumb.";
+                rhrHint.className = "mt-3 text-xs font-semibold text-blue-400";
+            } else if (n_charge < 0) {
+                particleMat.color.setHex(0xef4444); particleMat.emissive.setHex(0xb91c1c);
+                rhrHint.innerHTML = isThai ? "ประจุลบ: แรง (สีแดง) ตรงข้ามกับนิ้วโป้ง" : "Negative Charge: Force (Red) OPPOSITE to thumb.";
+                rhrHint.className = "mt-3 text-xs font-semibold text-red-400";
+            } else {
+                particleMat.color.setHex(0x94a3b8); particleMat.emissive.setHex(0x475569);
+                rhrHint.innerHTML = isThai ? "เป็นกลางทางไฟฟ้า: ไม่มีแรงแม่เหล็ก" : "Neutral Particle: No magnetic force.";
+                rhrHint.className = "mt-3 text-xs font-semibold text-slate-400";
+            }
+
+            // Math Calculations
+            const angle_rad = THREE.MathUtils.degToRad(angle_deg);
+            const sin_val = Math.sin(angle_rad);
+            const force_mag = Math.abs(actual_charge_C) * v_mag * b_mag * sin_val;
+            
+            // Format q for display
+            let qStr = n_charge !== 0 ? `${Math.abs(n_charge)} &times; 1.6 &times; 10<sup>-19</sup>` : "0";
+            
+            document.getElementById('c-q').innerHTML = qStr;
+            document.getElementById('c-v').innerText = v_mag;
+            document.getElementById('c-b').innerText = b_mag;
+            document.getElementById('c-ang').innerText = angle_deg;
+            document.getElementById('res-f').innerHTML = toSci(force_mag);
+
+            const v_perp = v_mag * sin_val;
+            document.getElementById('c-v2').innerText = v_mag;
+            document.getElementById('c-sin').innerText = sin_val.toFixed(2);
+            document.getElementById('c-q2').innerHTML = qStr;
+            document.getElementById('c-b2').innerText = b_mag;
+            document.getElementById('c-m').innerHTML = n_charge !== 0 ? mass_sci : "0";
+            
+            const resREl = document.getElementById('res-r');
+            if (Math.abs(actual_charge_C) > 0 && b_mag > 0 && v_perp > 0) {
+                // Real physics radius
+                const radius = (actual_mass_kg * v_perp) / (Math.abs(actual_charge_C) * b_mag);
+                resREl.innerHTML = toSci(radius) + " m";
+            } else if (v_perp === 0) {
+                resREl.innerText = "∞ (Straight / เส้นตรง)";
+            } else {
+                resREl.innerText = "∞ (No Force / ไม่มีแรง)";
+            }
+
+            if (!isSimulating) setupInitialState();
+        }
+
+        // Update RHR Hint text on language change
+        langToggle.addEventListener('click', updateMathDisplay);
+
+        // --- 5. Animation Helpers & Engine ---
+        function updateVectors() {
+            bArrow.position.copy(pos); bArrow.setDirection(new THREE.Vector3(0, 1, 0));
+            let bLen = b_mag * 1.5; bArrow.setLength(bLen, arrH_L, arrH_W);
+            bLabel.position.copy(pos).add(new THREE.Vector3(0, bLen + 0.5, 0));
+
+            vArrow.position.copy(pos);
+            if(vel.lengthSq() > 0) {
+                let vDir = vel.clone().normalize(); vArrow.setDirection(vDir);
+                let vLen = v_mag * 0.4 + 2; vArrow.setLength(vLen, arrH_L, arrH_W);
+                vLabel.position.copy(pos).add(vDir.multiplyScalar(vLen + 0.5));
+                vLabel.visible = true;
+            } else { vLabel.visible = false; }
+
+            fArrow.position.copy(pos);
+            if(F_vec.lengthSq() > 0.001) {
+                let fDir = F_vec.clone().normalize(); fArrow.setDirection(fDir);
+                // Scale visual force purely based on n, v, B to fit screen
+                let visualFLen = Math.abs(n_charge) * v_mag * b_mag * Math.sin(THREE.MathUtils.degToRad(angle_deg)) * 0.2 + 2;
+                fArrow.setLength(visualFLen, arrH_L, arrH_W);
+                fLabel.position.copy(pos).add(fDir.multiplyScalar(visualFLen + 0.5));
+                fArrow.visible = true; fLabel.visible = true;
+            } else { fArrow.visible = false; fLabel.visible = false; }
+
+            // Show Launch Angle Arc only when setting up (not simulating)
+            if (!isSimulating && angle_deg > 0 && v_mag > 0) {
+                angleArc.visible = true;
+                angleLabel.visible = true;
+                
+                const a_rad = THREE.MathUtils.degToRad(angle_deg);
+                const arcRadius = 2.5; 
+                const points = [];
+                // Generate points for the arc from B-vector (Y-axis) to v-vector
+                for(let i = 0; i <= 20; i++) {
+                    const t = i / 20;
+                    const currA = t * a_rad;
+                    points.push(new THREE.Vector3(pos.x + arcRadius * Math.sin(currA), pos.y + arcRadius * Math.cos(currA), pos.z));
+                }
+                angleArcGeo.setFromPoints(points);
+
+                // Position the theta label at the middle of the arc
+                const midA = a_rad / 2;
+                angleLabel.position.set(pos.x + (arcRadius + 0.6) * Math.sin(midA), pos.y + (arcRadius + 0.6) * Math.cos(midA), pos.z);
+            } else {
+                angleArc.visible = false;
+                angleLabel.visible = false;
+            }
+        }
+
+        function setupInitialState() {
+            isSimulating = false; pos.set(0, 0, 0); particle.position.copy(pos);
+            const a_rad = THREE.MathUtils.degToRad(angle_deg);
+            vel.set(v_mag * Math.sin(a_rad), v_mag * Math.cos(a_rad), 0);
+            B_vec.set(0, b_mag, 0);
+            // Visual force direction cross product (treat charge sign simply)
+            F_vec.crossVectors(vel, B_vec).multiplyScalar(n_charge);
+            
+            updateVectors();
+            trailCount = 0; trailGeo.setDrawRange(0, 0);
+        }
+
+        ui.btnFire.addEventListener('click', () => {
+            const isThai = document.body.classList.contains('lang-th');
+            if(!isSimulating) {
+                setupInitialState(); isSimulating = true;
+                ui.btnFire.innerHTML = isThai ? "<span class='th'>หยุดชั่วคราว</span>" : "<span class='en'>Pause Simulation</span>";
+                ui.btnFire.className = "font-bold py-3 px-4 rounded transition-colors shadow-lg bg-red-600 hover:bg-red-500 shadow-red-500/30 text-white";
+            } else {
+                isSimulating = false;
+                ui.btnFire.innerHTML = isThai ? "<span class='th'>เล่นต่อ</span>" : "<span class='en'>Resume Simulation</span>";
+                ui.btnFire.className = "font-bold py-3 px-4 rounded transition-colors shadow-lg bg-blue-600 hover:bg-blue-500 shadow-blue-500/20 text-white";
+            }
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            setupInitialState();
+            const isThai = document.body.classList.contains('lang-th');
+            ui.btnFire.innerHTML = isThai ? "<span class='th'>ยิงประจุ / เริ่มการทำงาน</span>" : "<span class='en'>Play Simulation</span>";
+            ui.btnFire.className = "font-bold py-3 px-4 rounded transition-colors shadow-lg bg-blue-600 hover:bg-blue-500 shadow-blue-500/20 text-white";
+        });
+
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            if (isSimulating) {
+                const dt = Math.min(clock.getDelta(), 0.05);
+
+                B_vec.set(0, b_mag, 0); 
+                // Physics engine uses n_charge directly for visual trajectory (since mass is scaled accordingly)
+                F_vec.crossVectors(vel, B_vec).multiplyScalar(n_charge);
+                const acc = F_vec.clone(); // Since m = 1 in simulation scale terms
+                
+                vel.add(acc.multiplyScalar(dt));
+                
+                // FIX: Magnetic force does NO work, so speed must remain strictly constant!
+                // This prevents the radius from expanding due to numerical integration errors (Euler method drift).
+                if (vel.lengthSq() > 0) {
+                    vel.setLength(v_mag);
+                }
+
+                pos.add(vel.clone().multiplyScalar(dt));
+
+                particle.position.copy(pos);
+                updateVectors();
+
+                if (trailCount < maxTrail) {
+                    trailPos[trailCount * 3] = pos.x; trailPos[trailCount * 3 + 1] = pos.y; trailPos[trailCount * 3 + 2] = pos.z;
+                    trailCount++;
+                    trailGeo.setDrawRange(0, trailCount); trailGeo.attributes.position.needsUpdate = true;
+                } else {
+                    for(let i=0; i< (maxTrail-1)*3; i++) trailPos[i] = trailPos[i+3];
+                    trailPos[(maxTrail-1)*3] = pos.x; trailPos[(maxTrail-1)*3 + 1] = pos.y; trailPos[(maxTrail-1)*3 + 2] = pos.z;
+                    trailGeo.attributes.position.needsUpdate = true;
+                }
+            } else { clock.getDelta(); }
+
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            width = container.clientWidth; height = container.clientHeight;
+            camera.aspect = width / height; camera.updateProjectionMatrix();
+            renderer.setSize(width, height); labelRenderer.setSize(width, height);
+        });
+
+        window.onload = () => { updateMathDisplay(); setupInitialState(); animate(); };
+    </script>
+</body>
+</html>
